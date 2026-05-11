@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>百色起义 - 红色地图故事</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Microsoft YaHei', 'SimHei', sans-serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+.header {
+    background: linear-gradient(90deg, #c9184a 0%, #ff006e 100%);
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(201, 24, 74, 0.3);
+    animation: headerSlideIn 1s ease-out;
+}
+
+@keyframes headerSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.header h1 {
+    color: #fff;
+    font-size: 2.5rem;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    animation: titlePulse 2s ease-in-out infinite;
+}
+
+@keyframes titlePulse {
+    0%, 100% { text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3); }
+    50% { text-shadow: 2px 2px 10px rgba(255, 0, 110, 0.5); }
+}
+
+.header .subtitle {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 1.1rem;
+    margin-top: 5px;
+}
+
+.main-content {
+    display: flex;
+    height: calc(100vh - 140px);
+    animation: contentFadeIn 0.8s ease-out 0.3s both;
+}
+
+@keyframes contentFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.map-container {
+    flex: 1;
+    position: relative;
+    background: #1a1a2e;
+}
+
+.map-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, rgba(201, 24, 74, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 100;
+}
+
+.story-panel {
+    width: 420px;
+    background: linear-gradient(180deg, #16213e 0%, #0f0f23 100%);
+    border-left: 2px solid rgba(201, 24, 74, 0.3);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: panelSlideIn 0.8s ease-out 0.5s both;
+}
+
+@keyframes panelSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.story-progress {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #c9184a, #ff006e);
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 10px rgba(201, 24, 74, 0.5);
+}
+
+.story-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.nav-btn {
+    background: linear-gradient(135deg, #c9184a, #ff006e);
+    border: none;
+    color: white;
+    padding: 10px 25px;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.nav-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+}
+
+.nav-btn:hover:not(:disabled)::before {
+    left: 100%;
+}
+
+.nav-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(201, 24, 74, 0.5);
+}
+
+.nav-btn:disabled {
+    background: rgba(255, 255, 255, 0.2);
+    cursor: not-allowed;
+}
+
+.chapter-indicator {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.story-content {
+    flex: 1;
+    padding: 25px;
+    overflow-y: auto;
+    color: #e0e0e0;
+}
+
+.story-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.story-content::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.story-content::-webkit-scrollbar-thumb {
+    background: rgba(201, 24, 74, 0.5);
+    border-radius: 3px;
+}
+
+.chapter-content {
+    animation: chapterFadeIn 0.6s ease-out;
+}
+
+@keyframes chapterFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.story-content h2 {
+    color: #ff006e;
+    font-size: 1.5rem;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid rgba(201, 24, 74, 0.3);
+    position: relative;
+}
+
+.story-content h2::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 50px;
+    height: 2px;
+    background: #ff006e;
+    animation: underlineGrow 0.5s ease-out;
+}
+
+@keyframes underlineGrow {
+    from { width: 0; }
+    to { width: 50px; }
+}
+
+.story-content .chapter-date {
+    color: rgba(201, 24, 74, 0.8);
+    font-size: 0.9rem;
+    margin-bottom: 15px;
+    font-style: italic;
+}
+
+.story-content p {
+    line-height: 1.8;
+    margin-bottom: 15px;
+    text-align: justify;
+    position: relative;
+}
+
+.story-content .highlight {
+    background: rgba(201, 24, 74, 0.15);
+    padding: 12px 15px;
+    border-radius: 8px;
+    border-left: 4px solid #ff006e;
+    margin: 20px 0;
+    animation: highlightPulse 2s ease-in-out infinite;
+}
+
+@keyframes highlightPulse {
+    0%, 100% { box-shadow: 0 0 5px rgba(201, 24, 74, 0.2); }
+    50% { box-shadow: 0 0 15px rgba(201, 24, 74, 0.4); }
+}
+
+.story-content .image-container {
+    margin: 20px 0;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+    animation: imageScaleIn 0.8s ease-out;
+}
+
+@keyframes imageScaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.story-content .image-container img {
+    width: 100%;
+    height: auto;
+    display: block;
+    transition: transform 0.3s ease;
+}
+
+.story-content .image-container:hover img {
+    transform: scale(1.05);
+}
+
+.story-content .image-caption {
+    background: rgba(0, 0, 0, 0.6);
+    padding: 12px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.85rem;
+}
+
+.timeline {
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.timeline-track {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    position: relative;
+    margin-bottom: 15px;
+}
+
+.timeline-progress {
+    height: 100%;
+    background: linear-gradient(90deg, #c9184a, #ff006e);
+    border-radius: 2px;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.timeline-progress::after {
+    content: '';
+    position: absolute;
+    right: -4px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 12px;
+    height: 12px;
+    background: #ff006e;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(255, 0, 110, 0.8);
+    animation: dotPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes dotPulse {
+    0%, 100% { box-shadow: 0 0 10px rgba(255, 0, 110, 0.8); }
+    50% { box-shadow: 0 0 20px rgba(255, 0, 110, 1); }
+}
+
+.timeline-markers {
+    display: flex;
+    justify-content: space-between;
+}
+
+.marker {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 5px 10px;
+    border-radius: 15px;
+    position: relative;
+}
+
+.marker::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 8px;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.marker:hover {
+    color: #ff006e;
+    background: rgba(201, 24, 74, 0.2);
+}
+
+.marker:hover::before {
+    background: #ff006e;
+    box-shadow: 0 0 8px rgba(255, 0, 110, 0.8);
+}
+
+.marker.active {
+    color: #fff;
+    background: linear-gradient(135deg, #c9184a, #ff006e);
+}
+
+.marker.active::before {
+    background: #fff;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+}
+
+.leaflet-container {
+    background: #1a1a2e;
+}
+
+.leaflet-popup-content-wrapper {
+    background: linear-gradient(180deg, #16213e 0%, #0f0f23 100%);
+    border: 1px solid rgba(201, 24, 74, 0.3);
+    border-radius: 10px;
+}
+
+.leaflet-popup-content {
+    color: #e0e0e0;
+    padding: 15px;
+}
+
+.leaflet-popup-tip {
+    background: #c9184a;
+}
+
+.custom-marker {
+    background: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 40"%3E%3Cpath fill="%23c9184a" d="M16 0C7 0 0 8 0 17c0 11 14 23 16 23s16-12 16-23c0-9-7-17-16-17z"/%3E%3Cpath fill="%23fff" d="M16 8c-3 0-5 2-5 5s2 5 5 5 5-2 5-5-2-5-5-5z"/%3E%3C/svg%3E') no-repeat center center;
+    background-size: contain;
+    width: 32px;
+    height: 40px;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+    animation: markerBounce 2s ease-in-out infinite;
+}
+
+@keyframes markerBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+.custom-marker:hover {
+    transform: scale(1.3);
+    animation: none;
+}
+
+.animated-line {
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 1000;
+    animation: dash 3s linear forwards;
+}
+
+@keyframes dash {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@media (max-width: 768px) {
+    .main-content {
+        flex-direction: column;
+        height: auto;
+    }
+
+    .map-container {
+        height: 400px;
+    }
+
+    .story-panel {
+        width: 100%;
+        height: calc(100vh - 400px);
+        border-left: none;
+        border-top: 2px solid rgba(201, 24, 74, 0.3);
+    }
+
+    .header h1 {
+        font-size: 1.8rem;
+    }
+}
+
+.map-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    font-size: 1.2rem;
+    z-index: 1000;
+}
+
+.map-loading::after {
+    content: '';
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(201, 24, 74, 0.3);
+    border-top-color: #ff006e;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-left: 10px;
+    vertical-align: middle;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>百色起义 - 红色记忆之旅</h1>
+        <p class="subtitle">1929年12月11日 · 广西百色</p>
+    </header>
+
+    <main class="main-content">
+        <div class="map-container" id="map">
+            <div class="map-loading" id="mapLoading">地图加载中</div>
+        </div>
+        
+        <div class="story-panel">
+            <div class="story-progress">
+                <div class="progress-bar"></div>
+            </div>
+            
+            <div class="story-nav">
+                <button class="nav-btn prev-btn" id="prevBtn" disabled>上一章</button>
+                <span class="chapter-indicator" id="chapterIndicator">1/6</span>
+                <button class="nav-btn next-btn" id="nextBtn">下一章</button>
+            </div>
+
+            <div class="story-content" id="storyContent">
+                <!-- 故事内容将通过JavaScript动态加载 -->
+            </div>
+
+            <div class="timeline">
+                <div class="timeline-track">
+                    <div class="timeline-progress"></div>
+                </div>
+                <div class="timeline-markers">
+                    <div class="marker active" data-chapter="0">策划</div>
+                    <div class="marker" data-chapter="1">进军</div>
+                    <div class="marker" data-chapter="2">起义</div>
+                    <div class="marker" data-chapter="3">建政</div>
+                    <div class="marker" data-chapter="4">根据地</div>
+                    <div class="marker" data-chapter="5">远征</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>百色起义地图故事 - 纪念中国工农红军第七军的诞生</p>
+    </footer>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+const storyData = [
+    {
+        id: 0,
+        title: '秘密策划',
+        date: '1929年6月 - 10月',
+        location: { lat: 23.13, lng: 107.49 },
+        zoom: 10,
+        content: `
+            <div class="chapter-content">
+            <h2>第一章：秘密策划</h2>
+            <div class="chapter-date">1929年6月 - 10月</div>
+            <p>1929年，中共中央派邓小平、张云逸、韦拔群等人前往广西，利用国民党新桂系与蒋介石之间的矛盾，开展兵运工作。</p>
+            <p>邓小平化名邓斌，以广西省政府秘书身份为掩护，在南宁秘密开展革命活动。他与广西省政府主席俞作柏、广西绥靖司令李明瑞建立联系，争取他们支持革命。</p>
+            <div class="highlight">
+                <strong>历史背景：</strong><br>
+                蒋桂战争后，广西政局动荡。俞作柏、李明瑞主政广西，他们与蒋介石矛盾日益加深，有意与共产党合作。
+            </div>
+            <p>在此期间，中共中央决定在广西举行武装起义，建立红军和革命根据地。邓小平、张云逸等人开始秘密整编部队，培训骨干力量。</p>
+            </div>
+        `
+    },
+    {
+        id: 1,
+        title: '挥师西进',
+        date: '1929年10月',
+        location: { lat: 23.8, lng: 107.2 },
+        zoom: 8,
+        content: `
+            <div class="chapter-content">
+            <h2>第二章：挥师西进</h2>
+            <div class="chapter-date">1929年10月</div>
+            <p>1929年10月，俞作柏、李明瑞起兵反蒋失败。邓小平当机立断，决定将中共掌握的武装力量转移到右江地区。</p>
+            <p>张云逸率领广西警备第四大队和教导总队前往百色，邓小平则率一部分干部经龙州前往右江。这支队伍成为百色起义的核心力量。</p>
+            <div class="highlight">
+                <strong>战略转移：</strong><br>
+                从南宁到百色的行军路线约400公里，部队克服重重困难，于10月下旬抵达百色地区。
+            </div>
+            <p>在西进途中，部队广泛开展群众工作，宣传革命主张，为起义奠定了坚实的群众基础。</p>
+            </div>
+        `
+    },
+    {
+        id: 2,
+        title: '百色城头',
+        date: '1929年12月11日',
+        location: { lat: 23.9, lng: 106.6 },
+        zoom: 12,
+        content: `
+            <div class="chapter-content">
+            <h2>第三章：百色城头</h2>
+            <div class="chapter-date">1929年12月11日</div>
+            <p>1929年12月11日，正值广州起义两周年纪念日，百色起义正式爆发！</p>
+            <p>清晨，在邓小平、张云逸等领导下，广西警备第四大队、教导总队和右江农民自卫军在百色举行武装起义，攻占了百色县城。</p>
+            <div class="highlight">
+                <strong>起义时刻：</strong><br>
+                1929年12月11日上午8时，起义军在百色东门广场召开群众大会，宣布成立中国工农红军第七军，张云逸任军长，邓小平任政治委员。
+            </div>
+            <p>同日，右江苏维埃政府成立，标志着右江革命根据地正式建立。百色起义是中国共产党在少数民族地区实行"工农武装割据"的一次成功实践。</p>
+            </div>
+        `
+    },
+    {
+        id: 3,
+        title: '建立政权',
+        date: '1929年12月 - 1930年2月',
+        location: { lat: 23.7, lng: 106.5 },
+        zoom: 10,
+        content: `
+            <div class="chapter-content">
+            <h2>第四章：建立政权</h2>
+            <div class="chapter-date">1929年12月 - 1930年2月</div>
+            <p>起义胜利后，右江流域各县相继建立苏维埃政权。到1930年2月，右江苏维埃政府下辖15个县，人口约100万。</p>
+            <p>红军第七军在战斗中不断发展壮大，由起义初期的2800余人发展到7000余人，编为三个纵队。</p>
+            <div class="highlight">
+                <strong>政权建设：</strong><br>
+                右江苏维埃政府颁布了《土地法暂行条例》和《共耕条例》，开展土地革命，没收地主土地分配给贫苦农民。
+            </div>
+            <p>韦拔群领导的农民武装成为根据地的重要力量，他们在东兰、凤山一带坚持斗争，为根据地的巩固作出了重要贡献。</p>
+            </div>
+        `
+    },
+    {
+        id: 4,
+        title: '红色割据',
+        date: '1930年2月 - 10月',
+        location: { lat: 24.0, lng: 106.2 },
+        zoom: 9,
+        content: `
+            <div class="chapter-content">
+            <h2>第五章：红色割据</h2>
+            <div class="chapter-date">1930年2月 - 10月</div>
+            <p>1930年2月，红七军在隆安战斗中击败桂系军阀的进攻，保卫了右江根据地。随后，红军开展游击战争，巩固和扩大根据地。</p>
+            <p>在根据地内，党和政府大力发展生产，兴办教育，改善民生。各族人民积极支援红军，形成了军民团结的良好局面。</p>
+            <div class="highlight">
+                <strong>根据地范围：</strong><br>
+                右江革命根据地以百色为中心，包括东兰、凤山、凌云、乐业等20余县，是当时中国西南部最大的革命根据地。
+            </div>
+            <p>1930年9月，红七军前委在平马召开会议，根据中共中央指示，决定率主力北上，与中央红军会合。</p>
+            </div>
+        `
+    },
+    {
+        id: 5,
+        title: '千里远征',
+        date: '1930年11月 - 1931年7月',
+        location: { lat: 26.0, lng: 114.0 },
+        zoom: 6,
+        content: `
+            <div class="chapter-content">
+            <h2>第六章：千里远征</h2>
+            <div class="chapter-date">1930年11月 - 1931年7月</div>
+            <p>1930年11月，红七军主力7000余人从河池出发，开始了艰苦卓绝的千里远征。</p>
+            <p>远征途中，红军突破敌人的围追堵截，转战桂、黔、湘、粤、赣五省，行程约7000里，经历大小战斗百余次。</p>
+            <div class="highlight">
+                <strong>艰难历程：</strong><br>
+                红七军远征历时9个月，穿越崇山峻岭，克服严寒饥饿，付出了巨大牺牲，最终于1931年7月到达中央革命根据地，与中央红军胜利会师。
+            </div>
+            <p>韦拔群、陈洪涛等人留守右江根据地，继续坚持斗争，直至1932年壮烈牺牲。</p>
+            <p>百色起义和红七军的斗争，在中国革命史上写下了光辉的一页，为中国革命培养了大批优秀干部。</p>
+            </div>
+        `
+    }
+];
+
+let map;
+let currentChapter = 0;
+let markers = [];
+let routeLayer = null;
+let animatedMarker = null;
+
+function initMap() {
+    map = L.map('map').setView([23.9, 106.6], 8);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        maxZoom: 18
+    }).addTo(map);
+
+    map.on('load', function() {
+        document.getElementById('mapLoading').style.display = 'none';
+    });
+
+    setTimeout(() => {
+        document.getElementById('mapLoading').style.display = 'none';
+    }, 2000);
+
+    addRoute();
+    addMarkers();
+    showChapter(0);
+
+    map.on('zoomend', function() {
+        updateMarkerSizes();
+    });
+}
+
+function addMarkers() {
+    const chapterLocations = [
+        { lat: 23.13, lng: 107.49, name: '南宁', chapter: 0 },
+        { lat: 23.8, lng: 107.2, name: '西进途中', chapter: 1 },
+        { lat: 23.9, lng: 106.6, name: '百色', chapter: 2 },
+        { lat: 23.75, lng: 106.38, name: '平马', chapter: 3 },
+        { lat: 24.0, lng: 106.2, name: '东兰', chapter: 4 },
+        { lat: 24.7, lng: 108.08, name: '河池', chapter: 5 },
+        { lat: 26.0, lng: 114.0, name: '井冈山', chapter: 5 }
+    ];
+
+    chapterLocations.forEach((loc, index) => {
+        const marker = L.marker([loc.lat, loc.lng], {
+            icon: L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="width: 32px; height: 40px; background: url('data:image/svg+xml,%3Csvg xmlns=&quot;http://www.w3.org/2000/svg&quot; viewBox=&quot;0 0 32 40&quot;%3E%3Cpath fill=&quot;%23c9184a&quot; d=&quot;M16 0C7 0 0 8 0 17c0 11 14 23 16 23s16-12 16-23c0-9-7-17-16-17z&quot;/%3E%3Cpath fill=&quot;%23fff&quot; d=&quot;M16 8c-3 0-5 2-5 5s2 5 5 5 5-2 5-5-2-5-5-5z&quot;/%3E%3C/svg%3E') no-repeat center center; background-size: contain; animation: markerBounce 2s ease-in-out infinite; animation-delay: ${index * 0.2}s;"></div>`,
+                iconSize: [32, 40],
+                iconAnchor: [16, 40]
+            })
+        }).addTo(map);
+
+        marker.bindPopup(`<strong>${loc.name}</strong><br>第${loc.chapter + 1}章`);
+        marker.on('click', function() {
+            goToChapter(loc.chapter);
+        });
+        markers.push(marker);
+    });
+}
+
+function addRoute() {
+    const routeCoords = [
+        [23.13, 107.49],
+        [23.8, 107.2],
+        [23.9, 106.6],
+        [23.75, 106.38],
+        [24.0, 106.2],
+        [24.7, 108.08],
+        [25.5, 110.0],
+        [26.0, 114.0]
+    ];
+
+    routeLayer = L.polyline(routeCoords, {
+        color: '#ff006e',
+        weight: 3,
+        opacity: 0.5,
+        dashArray: '10,10'
+    }).addTo(map);
+
+    L.polyline(routeCoords, {
+        color: '#c9184a',
+        weight: 8,
+        opacity: 0.2,
+        dashArray: '10,10'
+    }).addTo(map);
+
+    animateRoute(routeCoords);
+}
+
+function animateRoute(coords) {
+    let index = 0;
+    const interval = setInterval(() => {
+        if (index < coords.length - 1) {
+            const start = coords[index];
+            const end = coords[index + 1];
+            
+            const animatedLine = L.polyline([start, end], {
+                color: '#ff006e',
+                weight: 4,
+                opacity: 0.8,
+                dashArray: '5,5'
+            }).addTo(map);
+
+            setTimeout(() => {
+                animatedLine.setStyle({ opacity: 0.3 });
+            }, 500);
+
+            index++;
+        } else {
+            clearInterval(interval);
+        }
+    }, 800);
+}
+
+function updateMarkerSizes() {
+    const zoom = map.getZoom();
+    const size = Math.max(24, 32 + (zoom - 8) * 2);
+    
+    markers.forEach(marker => {
+        const icon = marker.getIcon();
+        icon.options.iconSize = [size, size * 1.25];
+        icon.options.iconAnchor = [size / 2, size * 1.25];
+        marker.setIcon(icon);
+    });
+}
+
+function showChapter(chapterIndex) {
+    const chapter = storyData[chapterIndex];
+    
+    const contentDiv = document.getElementById('storyContent');
+    contentDiv.style.opacity = '0';
+    
+    setTimeout(() => {
+        contentDiv.innerHTML = chapter.content;
+        contentDiv.style.opacity = '1';
+        
+        map.flyTo([chapter.location.lat, chapter.location.lng], chapter.zoom, {
+            duration: 1.5,
+            easeLinearity: 0.25,
+            animate: true
+        });
+
+        markers.forEach((marker, index) => {
+            if (index === chapterIndex || (chapterIndex === 5 && index === 4)) {
+                setTimeout(() => {
+                    marker.openPopup();
+                }, 800);
+            } else {
+                marker.closePopup();
+            }
+        });
+
+        animateMarkerAlongRoute(chapterIndex);
+
+        updateProgress(chapterIndex);
+        updateNavigation(chapterIndex);
+    }, 300);
+}
+
+function animateMarkerAlongRoute(chapterIndex) {
+    if (animatedMarker) {
+        map.removeLayer(animatedMarker);
+    }
+
+    const routeCoords = [
+        [23.13, 107.49],
+        [23.8, 107.2],
+        [23.9, 106.6],
+        [23.75, 106.38],
+        [24.0, 106.2],
+        [24.7, 108.08],
+        [25.5, 110.0],
+        [26.0, 114.0]
+    ];
+
+    if (chapterIndex > 0 && chapterIndex <= routeCoords.length) {
+        const targetCoords = routeCoords.slice(0, chapterIndex + 1);
+        
+        let currentIndex = 0;
+        animatedMarker = L.marker(targetCoords[0], {
+            icon: L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="width: 36px; height: 45px; background: url('data:image/svg+xml,%3Csvg xmlns=&quot;http://www.w3.org/2000/svg&quot; viewBox=&quot;0 0 32 40&quot;%3E%3Cpath fill=&quot;%23ff006e&quot; d=&quot;M16 0C7 0 0 8 0 17c0 11 14 23 16 23s16-12 16-23c0-9-7-17-16-17z&quot;/%3E%3Cpath fill=&quot;%23fff&quot; d=&quot;M16 8c-3 0-5 2-5 5s2 5 5 5 5-2 5-5-2-5-5-5z&quot;/%3E%3C/svg%3E') no-repeat center center; background-size: contain; box-shadow: 0 0 15px rgba(255, 0, 110, 0.8);"></div>`,
+                iconSize: [36, 45],
+                iconAnchor: [18, 45]
+            })
+        }).addTo(map);
+
+        const moveMarker = () => {
+            if (currentIndex < targetCoords.length - 1) {
+                const start = targetCoords[currentIndex];
+                const end = targetCoords[currentIndex + 1];
+                const steps = 20;
+                let step = 0;
+
+                const moveStep = setInterval(() => {
+                    step++;
+                    const progress = step / steps;
+                    const lat = start[0] + (end[0] - start[0]) * progress;
+                    const lng = start[1] + (end[1] - start[1]) * progress;
+                    
+                    animatedMarker.setLatLng([lat, lng]);
+
+                    if (step >= steps) {
+                        clearInterval(moveStep);
+                        currentIndex++;
+                        if (currentIndex < targetCoords.length - 1) {
+                            setTimeout(moveMarker, 300);
+                        }
+                    }
+                }, 50);
+            }
+        };
+
+        setTimeout(moveMarker, 500);
+    }
+}
+
+function updateProgress(chapterIndex) {
+    const progress = ((chapterIndex + 1) / storyData.length) * 100;
+    
+    const progressBar = document.querySelector('.progress-bar');
+    const timelineProgress = document.querySelector('.timeline-progress');
+    
+    progressBar.style.width = `${progress}%`;
+    timelineProgress.style.width = `${progress}%`;
+    
+    document.querySelectorAll('.marker').forEach((marker, index) => {
+        marker.classList.toggle('active', index === chapterIndex);
+    });
+
+    document.getElementById('chapterIndicator').textContent = `${chapterIndex + 1}/${storyData.length}`;
+}
+
+function updateNavigation(chapterIndex) {
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    
+    prevBtn.disabled = chapterIndex === 0;
+    nextBtn.disabled = chapterIndex === storyData.length - 1;
+
+    if (chapterIndex === 0) {
+        prevBtn.style.opacity = '0.5';
+    } else {
+        prevBtn.style.opacity = '1';
+    }
+
+    if (chapterIndex === storyData.length - 1) {
+        nextBtn.style.opacity = '0.5';
+    } else {
+        nextBtn.style.opacity = '1';
+    }
+}
+
+function nextChapter() {
+    if (currentChapter < storyData.length - 1) {
+        currentChapter++;
+        showChapter(currentChapter);
+    }
+}
+
+function prevChapter() {
+    if (currentChapter > 0) {
+        currentChapter--;
+        showChapter(currentChapter);
+    }
+}
+
+function goToChapter(chapterIndex) {
+    currentChapter = chapterIndex;
+    showChapter(currentChapter);
+}
+
+document.getElementById('nextBtn').addEventListener('click', nextChapter);
+document.getElementById('prevBtn').addEventListener('click', prevChapter);
+
+document.querySelectorAll('.marker').forEach((marker, index) => {
+    marker.addEventListener('click', () => goToChapter(index));
+});
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowLeft') {
+        prevChapter();
+    } else if (e.key === 'ArrowRight') {
+        nextChapter();
+    }
+});
+
+window.addEventListener('DOMContentLoaded', initMap);
+    </script>
+</body>
+</html>
